@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: orchestrator-service
+  kafka:
+    bootstrap-servers: localhost:9092 # Adjust if your Kafka is elsewhere
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      group-id: orchestrator-group # Consumer group for the orchestrator
+      auto-offset-reset: latest # Start reading from latest messages
+      properties:
+        spring.json.trusted.packages: "com.example.orchestrator.model, com.example.orchestrator.dto" # Trust packages for JSON deserialization
+
+# Workflow Definitions
+orchestrator:
+  workflows:
+    onboarding-flow:
+      description: "User onboarding process"
+      steps:
+        - name: createUserAccount
+          requestTopic: user-service-requests
+          responseTopic: user-service-responses
+          payloadTemplate: |
+            {
+              "username": "${transactionContext.username}",
+              "email": "${transactionContext.email}"
+            }
+        - name: createWelcomeEmail
+          requestTopic: email-service-requests
+          responseTopic: email-service-responses
+          payloadTemplate: |
+            {
+              "userId": "${transactionContext.userId}",
+              "emailAddress": "${transactionContext.email}"
+            }
+        - name: provisionResources
+          requestTopic: resource-service-requests
+          responseTopic: resource-service-responses
+          payloadTemplate: |
+            {
+              "userId": "${transactionContext.userId}"
+            }
+
+    order-processing-flow:
+      description: "E-commerce order fulfillment"
+      steps:
+        - name: reserveInventory
+          requestTopic: inventory-service-requests
+          responseTopic: inventory-service-responses
+          payloadTemplate: |
+            {
+              "orderId": "${transactionContext.orderId}",
+              "items": "${transactionContext.items}"
+            }
+        - name: processPayment
+          requestTopic: payment-service-requests
+          responseTopic: payment-service-responses
+          payloadTemplate: |
+            {
+              "orderId": "${transactionContext.orderId}",
+              "amount": "${transactionContext.totalAmount}"
+            }
